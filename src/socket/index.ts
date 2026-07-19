@@ -1,11 +1,13 @@
 import { Server } from "socket.io";
 import productionAgent from "./routes/productionAgent";
 import scriptAgent from "./routes/scriptAgent";
+import oneSentenceAgent from "./routes/oneSentenceAgent";
 
 export default (io: Server) => {
   const routes: Record<string, (nsp: ReturnType<Server["of"]>) => void> = {
     productionAgent,
     scriptAgent,
+    oneSentenceAgent,
   };
 
   for (const [name, handler] of Object.entries(routes)) {

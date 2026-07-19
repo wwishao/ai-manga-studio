@@ -295,5 +295,44 @@ export default (toolCpnfig: ToolConfig) => {
     }),
   };
 
+  // === 漫剧模式工具 ===
+  tools.switch_to_manga_mode = tool({
+    description: "切换 ProductionAgent 到漫剧模式，生成动态漫画而非视频",
+
+    execute: async () => {
+      console.log("[productionAgent] switch_to_manga_mode");
+      const thinking = msg.thinking("正在切换到漫剧模式...");
+      const { MangaModeManager } = await import("@/agents/productionAgent/mangaMode");
+      const mangaManager = new MangaModeManager(resTool);
+      resTool.data.__mangaManager = mangaManager;
+      thinking.updateTitle("已切换到漫剧模式");
+      thinking.complete();
+      return JSON.stringify({ mode: "manga", config: mangaManager.getConfig() });
+    },
+  });
+
+  tools.get_manga_config = tool({
+    description: "获取当前漫剧模式配置",
+
+    execute: async () => {
+      const mangaManager = resTool.data.__mangaManager;
+      if (!mangaManager) return JSON.stringify({ error: "未启用漫剧模式" });
+      return JSON.stringify(mangaManager.getConfig());
+    },
+  });
+
+  tools.export_manga_html_preview = tool({
+    description: "生成漫剧 HTML 预览文件",
+    execute: async ({ storyboardData }) => {
+      const mangaManager = resTool.data.__mangaManager;
+      if (!mangaManager) return JSON.stringify({ error: "未启用漫剧模式" });
+      const panels = await mangaManager.convertToMangaPanels(storyboardData);
+      const previewPath = await mangaManager.generateHTMLPreview(panels);
+      return JSON.stringify({ panels, previewPath });
+    },
+  });
+
+
+
   return toolsNames ? Object.fromEntries(Object.entries(tools).filter(([n]) => toolsNames.includes(n))) : tools;
 };

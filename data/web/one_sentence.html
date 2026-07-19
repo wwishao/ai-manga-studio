@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Manga Studio - 一句话生成漫剧/视频/电影</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-primary: #0b0b0f;
+      --bg-secondary: #121218;
+      --bg-card: #1a1a24;
+      --bg-hover: #22222e;
+      --border: #2a2a3a;
+      --border-active: #6c5ce7;
+      --text-primary: #eeeef0;
+      --text-secondary: #8888a0;
+      --text-muted: #5a5a70;
+      --accent: #6c5ce7;
+      --accent-glow: rgba(108, 92, 231, 0.3);
+      --accent-gradient: linear-gradient(135deg, #6c5ce7, #a855f7);
+      --success: #22c55e;
+      --success-bg: rgba(34, 197, 94, 0.1);
+      --warning: #f59e0b;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+    }
+    html { font-size: 15px; }
+    body {
+      font-family: 'Inter', -apple-system, 'Microsoft YaHei', 'PingFang SC', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    
+    /* Ambient background effect */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(108, 92, 231, 0.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(108, 92, 231, 0.03) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Login overlay */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-primary);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    .login-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .login-box {
+      width: 360px;
+      padding: 40px 32px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+    }
+    .login-box .brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .login-box .brand-icon {
+      width: 56px;
+      height: 56px;
+      background: var(--accent-gradient);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .login-box .brand h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .login-box .brand p {
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .field-group { margin-bottom: 16px; }
+    .field-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field-group input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field-group input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 11px;
+      background: var(--accent-gradient);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .login-error {
+      color: #ef4444;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 12px;
+      display: none;
+    }
+    .login-error.show { display: block; }
+    .login-hint {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 48px 0 36px;
+      opacity: 0;
+      animation: fadeSlideUp 0.6s ease forwards;
+    }
+    .header .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .header .logo-mark {
+      width: 44px;
+      height: 44px;
+      background: var(--accent-gradient);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .header h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header p {
+      color: var(--text-secondary);
+      font-size: 15px;
+      margin-top: 8px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Input Area */
+    .input-area {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      opacity: 0;
+      animation: fadeSlideUp 0.6s ease 0.1s forwards;
+    }
+    .input-area:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+    }
+    .input-area textarea {
+      width: 100%;
+      min-height: 64px;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-size: 15px;
+      line-height: 1.7;
+      resize: vertical;
+      outline: none;
+      font-family: inherit;
+    }
+    .input-area textarea::placeholder { color: var(--text-muted); }
+    .input-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+    .input-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .input-meta kbd {
+      padding: 1px 5px;
+      background: var(--bg-hover);
+      border-radius: 4px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+    }
+    .btn-generate {
+      padding: 10px 28px;
+      background: var(--accent-gradient);
+      border: none;
+      border-radius: 24px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-generate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px var(--accent-glow);
+    }
+    .btn-generate:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    .btn-generate .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    .btn-generate.loading .spinner { display: block; }
+    .btn-generate.loading .label-text { display: none; }
+    .btn-generate.loading .label-loading { display: inline; }
+    .btn-generate .label-loading { display: none; }
+
+    /* Examples */
+    .examples {
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: fadeSlideUp 0.6s ease 0.15s forwards;
+    }
+    .examples-title {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .example-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+    }
+    .example-item {
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      line-height: 1.5;
+    }
+    .example-item:hover {
+      border-color: var(--accent);
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    /* Quick style tags */
+    .quick-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      opacity: 0;
+      animation: fadeSlideUp 0.6s ease 0.2s forwards;
+    }
+    .quick-tag {
+      padding: 5px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .quick-tag:hover {
+      border-color: var(--accent);
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .quick-tag.active {
+      border-color: var(--accent);
+      background: rgba(108, 92, 231, 0.15);
+      color: var(--accent);
+    }
+
+    /* Style Panel */
+    .style-panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      display: none;
+      animation: fadeSlideUp 0.3s ease;
+    }
+    .style-panel.active { display: block; }
+    .style-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .style-panel h3 { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .style-panel-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .style-panel-close:hover { color: var(--text-primary); background: var(--bg-hover); }
+    .style-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .style-card {
+      padding: 12px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .style-card:hover { border-color: var(--accent); background: var(--bg-hover); }
+    .style-card.selected {
+      border-color: var(--accent);
+      background: rgba(108, 92, 231, 0.12);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+    .style-card .style-icon { font-size: 24px; display: block; margin-bottom: 6px; }
+    .style-card .name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .style-card .desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Progress Steps */
+    .progress-steps {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .progress-steps.show { opacity: 1; }
+    .step {
+      flex: 1;
+      padding: 10px 6px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      transition: all 0.4s;
+    }
+    .step .step-index {
+      display: block;
+      width: 22px;
+      height: 22px;
+      line-height: 22px;
+      text-align: center;
+      margin: 0 auto 4px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 700;
+      transition: all 0.4s;
+    }
+    .step.active {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .step.active .step-index {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .step.done {
+      color: var(--success);
+      border-color: var(--success);
+    }
+    .step.done .step-index {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    /* Chat / Messages */
+    .chat-area {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      min-height: 100px;
+      max-height: 420px;
+      overflow-y: auto;
+      display: none;
+    }
+    .chat-area.active { display: block; }
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-track { background: transparent; }
+    .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .message { margin-bottom: 14px; animation: fadeSlideUp 0.3s ease; }
+    .message:last-child { margin-bottom: 0; }
+    .message .msg-role {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .message .msg-content { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+    .message .msg-content .thinking { color: var(--text-muted); font-style: italic; }
+    .message .msg-content .highlight { color: var(--accent); font-weight: 600; }
+    .streaming-dot { animation: blink 1s infinite; }
+    .streaming-text::after {
+      content: '';
+      display: inline-block;
+      width: 2px;
+      height: 14px;
+      background: var(--accent);
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: blink 0.8s infinite;
+    }
+
+    /* Confirm buttons */
+    .confirm-buttons { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .confirm-btn {
+      padding: 8px 18px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .confirm-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+    .confirm-btn.primary {
+      background: var(--accent-gradient);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    /* Result Area */
+    .result-area {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: none;
+      animation: fadeSlideUp 0.5s ease;
+    }
+    .result-area.active { display: block; }
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .result-header-left { display: flex; align-items: center; gap: 12px; }
+    .result-header h2 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .result-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    .result-view-link {
+      padding: 6px 16px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-gradient);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .result-view-link:hover { opacity: 0.9; transform: translateY(-1px); }
+    .result-scenes { display: grid; gap: 10px; }
+    .scene-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      transition: border-color 0.2s;
+    }
+    .scene-card:hover { border-color: var(--border-active); }
+    .scene-card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .scene-index-badge {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(108, 92, 231, 0.15);
+      color: var(--accent);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .scene-card h4 { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .scene-card p { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+    .scene-meta { margin-top: 8px; display: flex; gap: 16px; flex-wrap: wrap; }
+    .scene-meta-item { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+
+    /* Character tags in result */
+    .char-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+    .char-tag {
+      padding: 4px 10px;
+      background: rgba(108, 92, 231, 0.1);
+      border: 1px solid rgba(108, 92, 231, 0.2);
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    /* Animations */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    @media (max-width: 640px) {
+      .container { padding: 16px 12px 40px; }
+      .header { padding: 32px 0 24px; }
+      .header h1 { font-size: 24px; }
+      .input-area { padding: 16px; }
+      .input-actions { flex-direction: column; gap: 10px; }
+      .btn-generate { width: 100%; justify-content: center; }
+      .input-meta { width: 100%; text-align: center; }
+      .style-grid { grid-template-columns: repeat(2, 1fr); }
+      .example-grid { grid-template-columns: 1fr; }
+      .progress-steps { gap: 4px; }
+      .step { font-size: 10px; padding: 8px 4px; }
+      .step .step-index { width: 18px; height: 18px; line-height: 18px; font-size: 9px; }
+      .result-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .login-box { width: 92%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="brand">
+        <div class="brand-icon">AI</div>
+        <h1>AI Manga Studio</h1>
+        <p>一句话，生成你的漫剧/视频/电影</p>
+      </div>
+      <div class="field-group">
+        <label>用户名</label>
+        <input type="text" id="loginUser" value="admin" placeholder="输入用户名">
+      </div>
+      <div class="field-group">
+        <label>密码</label>
+        <input type="password" id="loginPass" value="admin123" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn-primary" id="loginBtn" onclick="doLogin()">登录</button>
+      <div class="login-error" id="loginError"></div>
+      <div class="login-hint">默认账号: admin / admin123</div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <div class="logo-mark">AI</div>
+        <h1>AI Manga Studio</h1>
+      </div>
+      <p>输入一句话创意，AI 自动完成从剧本到成片的全流程</p>
+    </div>
+
+    <!-- Examples -->
+    <div class="examples" id="examplesSection">
+      <div class="examples-title">试试这些创意</div>
+      <div class="example-grid">
+        <div class="example-item" onclick="fillExample(this)">一个程序员穿越到古代用代码改变世界</div>
+        <div class="example-item" onclick="fillExample(this)">一只猫咪意外获得超能力成为城市守护者</div>
+        <div class="example-item" onclick="fillExample(this)">古代将军穿越到现代校园的爆笑日常</div>
+        <div class="example-item" onclick="fillExample(this)">在末日废土上最后一个花店的温暖故事</div>
+      </div>
+    </div>
+
+    <!-- Quick Style Tags -->
+    <div class="quick-tags" id="quickTags">
+      <span class="quick-tag" data-panel="art">选画风</span>
+      <span class="quick-tag" data-panel="tone">选色调</span>
+      <span class="quick-tag" data-panel="pace">选节奏</span>
+      <span class="quick-tag" data-panel="output">输出类型</span>
+      <span class="quick-tag" data-panel="voice">配音风格</span>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <textarea id="ideaInput" placeholder="输入你的创意，比如：&#10;一个程序员穿越到古代用代码改变世界..." rows="3"></textarea>
+      <div class="input-actions">
+        <span class="input-meta">按 <kbd>Ctrl</kbd> + <kbd>Enter</kbd> 快速生成</span>
+        <button class="btn-generate" id="generateBtn" onclick="startGeneration()">
+          <span class="spinner"></span>
+          <span class="label-text">一句话生成</span>
+          <span class="label-loading">AI 创作中...</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Style Panel -->
+    <div class="style-panel" id="stylePanel">
+      <div class="style-panel-header">
+        <h3 id="styleTitle">选择画风</h3>
+        <button class="style-panel-close" onclick="closeStylePanel()">x</button>
+      </div>
+      <div class="style-grid" id="styleGrid"></div>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="progress-steps" id="progressSteps">
+      <div class="step" data-step="1"><span class="step-index">1</span>理解创意</div>
+      <div class="step" data-step="2"><span class="step-index">2</span>故事扩写</div>
+      <div class="step" data-step="3"><span class="step-index">3</span>风格确认</div>
+      <div class="step" data-step="4"><span class="step-index">4</span>AI 创作</div>
+      <div class="step" data-step="5"><span class="step-index">5</span>制作完成</div>
+    </div>
+
+    <!-- Chat / Progress Area -->
+    <div class="chat-area" id="chatArea">
+      <div id="messages"></div>
+    </div>
+
+    <!-- Result Area -->
+    <div class="result-area" id="resultArea">
+      <div class="result-header">
+        <div class="result-header-left">
+          <h2 id="resultTitle"></h2>
+          <span class="result-badge" id="resultBadge"></span>
+        </div>
+        <a class="result-view-link" id="resultViewLink" href="#" target="_blank">在工作室中打开</a>
+      </div>
+      <div id="resultCharacters"></div>
+      <div class="result-scenes" id="resultScenes"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let authToken = '';
+    let currentStyle = {
+      artStyle: '日系动漫',
+      colorTone: '明亮温暖',
+      pacing: '轻松搞笑',
+      outputType: '漫剧',
+      voiceStyle: '旁白解说'
+    };
+    let currentStep = 0;
+    let projectId = null;
+    let isGenerating = false;
+
+    const STYLE_OPTIONS = {
+      art: { title: '选择画风', key: 'artStyle', options: [
+        { label: '水墨风', icon: 'S', desc: '中国传统水墨意境' },
+        { label: '日系动漫', icon: 'A', desc: '日本动画风格' },
+        { label: '古风', icon: 'G', desc: '中国古典美学' },
+        { label: '写实', icon: 'R', desc: '逼真现实风格' },
+        { label: 'Q版', icon: 'Q', desc: '可爱卡通风' },
+        { label: '赛博朋克', icon: 'C', desc: '霓虹科幻风格' },
+      ]},
+      tone: { title: '选择色调', key: 'colorTone', options: [
+        { label: '明亮温暖', icon: 'W', desc: '阳光积极的色调' },
+        { label: '黑暗冷酷', icon: 'D', desc: '深沉冷酷的色调' },
+        { label: '怀旧复古', icon: 'V', desc: '旧时光温暖色调' },
+        { label: '鲜艳多彩', icon: 'B', desc: '色彩丰富活泼' },
+        { label: '黑白', icon: 'M', desc: '经典黑白风格' },
+      ]},
+      pace: { title: '选择叙事节奏', key: 'pacing', options: [
+        { label: '轻松搞笑', icon: 'H', desc: '轻松愉快笑点密集' },
+        { label: '紧张刺激', icon: 'T', desc: '节奏紧凑扣人心弦' },
+        { label: '温暖治愈', icon: 'C', desc: '温暖人心治愈系' },
+        { label: '悬疑惊悚', icon: 'S', desc: '悬念迭起惊险刺激' },
+        { label: '史诗磅礴', icon: 'E', desc: '宏大叙事气势恢宏' },
+      ]},
+      output: { title: '选择输出类型', key: 'outputType', options: [
+        { label: '漫剧', icon: 'M', desc: '动态漫画（推荐）' },
+        { label: '短视频', icon: 'V', desc: '15-60秒短视频' },
+        { label: '电影短片', icon: 'F', desc: '3-5分钟电影短片' },
+      ]},
+      voice: { title: '选择配音风格', key: 'voiceStyle', options: [
+        { label: '旁白解说', icon: 'N', desc: '第三人称旁白' },
+        { label: '角色对话', icon: 'D', desc: '角色间对话配音' },
+        { label: '无声配乐', icon: 'M', desc: '仅背景音乐' },
+      ]},
+    };
+
+    // Auth
+    async function doLogin() {
+      const user = document.getElementById('loginUser').value;
+      const pass = document.getElementById('loginPass').value;
+      const btn = document.getElementById('loginBtn');
+      const err = document.getElementById('loginError');
+      btn.disabled = true;
+      btn.textContent = '登录中...';
+      err.classList.remove('show');
+      try {
+        const res = await fetch(API_BASE + '/api/login/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.code !== 200) throw new Error(data.message || '登录失败');
+        authToken = data.data.token;
+        document.getElementById('loginOverlay').classList.add('hidden');
+      } catch (e) {
+        err.textContent = '登录失败: ' + e.message;
+        err.classList.add('show');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '登录';
+      }
+    }
+
+    function fillExample(el) {
+      document.getElementById('ideaInput').value = el.textContent;
+      document.getElementById('ideaInput').focus();
+    }
+
+    // Quick tag style selection
+    document.querySelectorAll('.quick-tag').forEach(tag => {
+      tag.addEventListener('click', function() {
+        const panel = this.dataset.panel;
+        showStylePanel(panel);
+      });
+    });
+
+    function showStylePanel(type) {
+      const config = STYLE_OPTIONS[type];
+      if (!config) return;
+      const panel = document.getElementById('stylePanel');
+      const title = document.getElementById('styleTitle');
+      const grid = document.getElementById('styleGrid');
+      title.textContent = config.title;
+      grid.innerHTML = config.options.map(opt => {
+        const selected = currentStyle[config.key] === opt.label;
+        return '<div class="style-card ' + (selected ? 'selected' : '') + '" onclick="selectStyle(\'' + config.key + '\', \'' + opt.label + '\', this)">' +
+          '<span class="style-icon">' + opt.icon + '</span>' +
+          '<div class="name">' + opt.label + '</div>' +
+          '<div class="desc">' + opt.desc + '</div>' +
+        '</div>';
+      }).join('');
+      panel.classList.add('active');
+    }
+
+    function selectStyle(key, value, el) {
+      currentStyle[key] = value;
+      document.querySelectorAll('#styleGrid .style-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      document.querySelectorAll('.quick-tag').forEach(t => {
+        t.classList.remove('active');
+        const panel = t.dataset.panel;
+        const config = STYLE_OPTIONS[panel];
+        if (config && config.key === key) t.classList.add('active');
+      });
+      addMessage('system', '已选择: ' + value);
+      setTimeout(() => document.getElementById('stylePanel').classList.remove('active'), 200);
+    }
+
+    function closeStylePanel() {
+      document.getElementById('stylePanel').classList.remove('active');
+    }
+
+    function addMessage(role, content, isStreaming) {
+      const area = document.getElementById('chatArea');
+      area.classList.add('active');
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'message';
+      const roleLabel = role === 'system' ? '系统' : (role === 'ai' ? 'AI 助手' : '');
+      div.innerHTML = '<div class="msg-role">' + roleLabel + '</div>' +
+        '<div class="msg-content' + (isStreaming ? ' streaming-text' : '') + '">' + content + '</div>';
+      msgs.appendChild(div);
+      area.scrollTop = area.scrollHeight;
+      return div;
+    }
+
+    function updateStep(step) {
+      currentStep = step;
+      document.getElementById('progressSteps').classList.add('show');
+      document.querySelectorAll('.step').forEach(el => {
+        const s = parseInt(el.dataset.step);
+        el.classList.toggle('done', s < step);
+        el.classList.toggle('active', s === step);
+      });
+    }
+
+    function updateStatus(msg) {
+      addMessage('system', msg);
+    }
+
+    async function startGeneration() {
+      if (isGenerating) return;
+      const idea = document.getElementById('ideaInput').value.trim();
+      if (!idea) {
+        addMessage('system', '请先输入你的创意！');
+        return;
+      }
+
+      isGenerating = true;
+      const btn = document.getElementById('generateBtn');
+      btn.disabled = true;
+      btn.classList.add('loading');
+      document.getElementById('chatArea').classList.add('active');
+      document.getElementById('resultArea').classList.remove('active');
+      document.getElementById('messages').innerHTML = '';
+      updateStep(1);
+
+      try {
+        // Step 1-2: Expand story
+        updateStatus('正在理解你的创意并扩写故事...');
+        updateStep(2);
+
+        const expandRes = await fetch(API_BASE + '/api/oneSentenceAgent/chat/expand', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authToken,
+          },
+          body: JSON.stringify({ idea }),
+        });
+        const expandData = await expandRes.json();
+        if (expandData.code !== 200) throw new Error(expandData.error || '扩写失败');
+
+        const outline = expandData.data;
+        updateStatus('故事已扩写完成：《' + outline.title + '》');
+
+        // Show story preview
+        const msgs = document.getElementById('messages');
+        const previewDiv = document.createElement('div');
+        previewDiv.className = 'message';
+        let scenesHtml = (outline.scenes || []).map((s, i) =>
+          '<div style="padding:8px 0;border-top:1px solid var(--border);display:flex;gap:10px;align-items:flex-start;">' +
+            '<span style="background:rgba(108,92,231,0.15);color:var(--accent);border-radius:4px;padding:1px 7px;font-size:11px;font-weight:700;white-space:nowrap;">场景' + (i+1) + '</span>' +
+            '<div><div style="color:var(--text-primary);font-size:13px;font-weight:600;">' + s.name + '</div>' +
+            '<div style="color:var(--text-muted);font-size:12px;margin-top:2px;">' + s.description + '</div></div>' +
+          '</div>'
+        ).join('');
+        previewDiv.innerHTML = '<div class="msg-role">故事大纲</div><div class="msg-content">' +
+          '<div style="background:var(--bg-card);padding:16px;border-radius:var(--radius-sm);margin:8px 0;border:1px solid var(--border);">' +
+            '<div style="font-size:18px;font-weight:700;margin-bottom:4px;color:var(--text-primary);">' + outline.title + '</div>' +
+            '<div style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;">' + (outline.logline || '') + '</div>' +
+            scenesHtml +
+          '</div></div>';
+        msgs.appendChild(previewDiv);
+
+        // Step 3: Style confirmation
+        updateStep(3);
+        updateStatus('风格已预设完成。你也可以点击上方标签调整风格。');
+        
+        // Short wait for user to adjust if they want - but auto-proceed after brief pause
+        setTimeout(async () => {
+          updateStatus('风格: ' + currentStyle.artStyle + ' / ' + currentStyle.colorTone + ' / ' + currentStyle.pacing);
+
+          // Step 4: Quick generate
+          updateStep(4);
+          updateStatus('AI 正在全力创作你的作品...');
+
+          const genRes = await fetch(API_BASE + '/api/oneSentenceAgent/chat/quick-generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authToken,
+            },
+            body: JSON.stringify({
+              idea,
+              artStyle: currentStyle.artStyle,
+              outputType: currentStyle.outputType,
+            }),
+          });
+          const genData = await genRes.json();
+          if (genData.code !== 200) throw new Error(genData.error || '生成失败');
+
+          projectId = genData.data.projectId;
+
+          // Step 5: Done
+          updateStep(5);
+          updateStatus('项目《' + genData.data.title + '》创建完成！共 ' + genData.data.scenes + ' 个场景');
+
+          setTimeout(() => showResult(outline), 300);
+        }, 1500);
+
+      } catch (err) {
+        updateStatus('出错了: ' + err.message);
+        console.error(err);
+      } finally {
+        isGenerating = false;
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+    }
+
+    function showResult(outline) {
+      document.getElementById('resultArea').classList.add('active');
+      document.getElementById('resultTitle').textContent = outline.title;
+      document.getElementById('resultBadge').textContent = currentStyle.outputType;
+      document.getElementById('resultViewLink').href = window.location.origin + '/?projectId=' + projectId;
+
+      // Characters
+      const charContainer = document.getElementById('resultCharacters');
+      if (outline.characters && outline.characters.length > 0) {
+        charContainer.innerHTML = '<div class="char-tags">' +
+          outline.characters.map(c =>
+            '<span class="char-tag">' + c.name + ' (' + (c.type || '角色') + ')</span>'
+          ).join('') +
+        '</div>';
+      } else {
+        charContainer.innerHTML = '';
+      }
+
+      // Scenes
+      const container = document.getElementById('resultScenes');
+      container.innerHTML = (outline.scenes || []).map((s, i) =>
+        '<div class="scene-card">' +
+          '<div class="scene-card-top">' +
+            '<span class="scene-index-badge">' + (i + 1) + '</span>' +
+            '<h4>' + s.name + '</h4>' +
+          '</div>' +
+          '<p>' + s.description + '</p>' +
+          '<div class="scene-meta">' +
+            '<span class="scene-meta-item">' + (s.location || '未知地点') + '</span>' +
+            '<span class="scene-meta-item">' + ((s.characters || []).join('、') || '待定') + '</span>' +
+          '</div>' +
+        '</div>'
+      ).join('');
+
+      document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Ctrl + Enter shortcut
+    document.getElementById('ideaInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) startGeneration();
+    });
+
+    // Auto-focus on input after login
+    document.getElementById('loginPass').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doLogin();
+    });
+  </script>
+</body>
+</html>

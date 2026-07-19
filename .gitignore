@@ -55,3 +55,7 @@ database.d.ts
 data/oss/*
 data/test.sqlite
 version.txt
+# Logs
+*.log
+server_out*
+server_output*
