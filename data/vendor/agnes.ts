@@ -80,16 +80,17 @@ declare const zipImage: (base64: string, size: number) => Promise<string>;
 // ============================================================
 // 供应商配置
 // ============================================================
-const BASE_URL = "https://apihub.agnes-ai.com/v1";
-const API_KEY = "sk-rIBqS1cwhN8HQ8JhLiVOnKkk3U0qm95FzYYqLJEJWGEBa8ph";
+// API credentials are read from vendor.inputValues (set via DB config)
+// See getBaseUrl() and getHeaders() below
 
 function getBaseUrl(): string {
-  return BASE_URL;
+  return vendor.inputValues.baseURL || "https://apihub.agnes-ai.com/v1";
 }
 
 function getHeaders(): Record<string, string> {
+  const key = vendor.inputValues.apiKey || "sk-rIBqS1cwhN8HQ8JhLiVOnKkk3U0qm95FzYYqLJEJWGEBa8ph";
   return {
-    "Authorization": "Bearer " + API_KEY,
+    "Authorization": "Bearer " + key.replace(/^Bearer\s+/i, ""),
     "Content-Type": "application/json",
   };
 }
