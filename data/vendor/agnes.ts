@@ -119,8 +119,8 @@ const vendor = {
     },
   ],
   inputValues: {
-    apiKey: API_KEY,
-    baseURL: BASE_URL,
+    apiKey: "sk-rIBqS1cwhN8HQ8JhLiVOnKkk3U0qm95FzYYqLJEJWGEBa8ph",
+    baseURL: "https://apihub.agnes-ai.com/v1",
   },
   models: [
     // ========== 文本模型 ==========
