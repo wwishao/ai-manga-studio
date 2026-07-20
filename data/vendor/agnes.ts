@@ -459,4 +459,9 @@ const ttsRequest = async (config: TTSConfig, model: TTSModel): Promise<string> =
   return Buffer.from(resp.data).toString("base64");
 };
 
-export default vendor;
+exports.vendor = vendor;
+exports.textRequest = textRequest;
+exports.imageRequest = imageRequest;
+exports.videoRequest = videoRequest;
+exports.ttsRequest = ttsRequest;
+export {};
