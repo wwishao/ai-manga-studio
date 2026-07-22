@@ -53,7 +53,7 @@ function injectBaseStyles() {
   s.textContent = [
     '#n9_injected_container{position:absolute;top:0;left:0;right:0;bottom:0;z-index:10;overflow:hidden;background:var(--bgc,var(--td-bg-color-page,#0b0b0f))}',
     '.n9_view_content{width:100%;height:100%;position:relative}',
-    '.n9_nav_label{font-size:0.5rem;white-space:nowrap;pointer-events:none;margin-top:0.125rem;display:block;text-align:center;width:100%;line-height:1;opacity:.75;font-weight:500}',
+    '.n9_nav_label{font-size:0.65rem;white-space:nowrap;pointer-events:none;margin-top:0.2rem;display:block;text-align:center;width:100%;line-height:1.2;opacity:0.85;font-weight:500}',
     '.n9_icon{display:flex;align-items:center;justify-content:center;pointer-events:none}',
     '.n9_icon svg{width:24px;height:24px;display:block;pointer-events:none}',
     '@keyframes n9_item_appear{0%{opacity:0;transform:scale(0.5)}50%{opacity:0.5;transform:scale(1.05)}100%{opacity:1;transform:scale(1)}}',
@@ -118,13 +118,14 @@ function ensureNavButtons() {
 function addNavLabels() {
   var itemBox = document.querySelector('.itemBox');
   if (!itemBox) return;
-  var vueItems = itemBox.querySelectorAll('div[id]');
+  var vueItems = itemBox.children;
   for (var i = 0; i < vueItems.length; i++) {
     var el = vueItems[i];
     if (!el.querySelector('.n9_nav_label')) {
       var label = '';
-      if (el.id.indexOf('project') >= 0) label = '项目';
-      else if (el.id.indexOf('task') >= 0) label = '任务';
+      // 按位置区分导航项（Vue 原生按钮无 id）
+      if (i === 0) label = '项目';
+      else if (i === 1) label = '任务';
       if (label) {
         var span = document.createElement('span');
         span.className = 'n9_nav_label';
